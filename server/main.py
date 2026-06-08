@@ -10,7 +10,7 @@ load_dotenv()
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from rag.graph import run_rag
+from rag.graph import run_rag, get_available_models
 from rag.retriever import retriever
 
 app = FastAPI(title="RAG LangGraph API")
@@ -25,6 +25,8 @@ app.add_middleware(
 
 class QueryRequest(BaseModel):
     question: str
+    model: str = None  # 可选模型参数
+    api_key: str = None  # 可选 API Key 参数
 
 class QueryResponse(BaseModel):
     answer: str
@@ -60,7 +62,7 @@ async def query(request: QueryRequest):
         if not request.question.strip():
             raise HTTPException(status_code=400, detail="Question is required")
         
-        result = await run_rag(request.question)
+        result = await run_rag(request.question, request.model, request.api_key)
         
         return {"answer": result["answer"], "sources": result["sources"]}
     
@@ -74,6 +76,11 @@ async def get_stats():
         return stats
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/rag/models")
+async def get_models():
+    """获取可用的大模型列表"""
+    return {"models": get_available_models()}
 
 @app.delete("/api/rag/clear")
 async def clear_documents():
